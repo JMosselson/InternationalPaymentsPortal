@@ -128,6 +128,82 @@ const registerLimiter = rateLimit({
 });
 
 // --- API Routes ---
+// 1. User Registration (Customer)
+// Apply registerLimiter to this route
+app.post('/api/register', registerLimiter, async (req, res) => {
+    const { fullName, idNumber, accountNumber, password } = req.body;
+
+    // Server-side input validation
+    if (!isValidFullName(fullName) || !isValidIdNumber(idNumber) || !isValidAccountNumber(accountNumber) || !isValidPassword(password)) {
+        return res.status(400).json({ message: 'Invalid input data. Please check all fields.' });
+    }
+
+    try {
+        const hashedPassword = await bcrypt.hash(password, 10); // Hash password
+
+        const newUser = new User({
+            fullName,
+            idNumber,
+            accountNumber,
+            username: accountNumber, // Using accountNumber as username for customers
+            passwordHash: hashedPassword,
+            role: 'customer'
+        });
+
+        await newUser.save(); // Save new user to MongoDB
+
+        res.status(201).json({ message: 'Registration successful!' });
+    } catch (err) {
+        console.error('Error during registration:', err);
+        if (err.code === 11000) { // MongoDB duplicate key error code
+            res.status(409).json({ message: 'Account number, ID number, or Username already exists.' });
+        } else {
+            res.status(500).json({ message: 'Server error during registration.' });
+        }
+    }
+});
+
+// 2. User Login (Customer & Employee)
+// Apply loginLimiter to this route
+app.post('/api/login', loginLimiter, async (req, res) => {
+    const { username, accountNumber, password } = req.body;
+
+    // Server-side input validation
+    if (!username || !isValidAccountNumber(accountNumber) || !password) {
+        return res.status(400).json({ message: 'Username, account number, and password are required.' });
+    }
+
+    try {
+        // Find user by username AND account number
+        const user = await User.findOne({ username, accountNumber });
+
+        if (!user) {
+            return res.status(401).json({ message: 'Invalid credentials.' });
+        }
+
+        // Compare provided password with hashed password from database
+        const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+
+        if (!isPasswordValid) {
+            return res.status(401).json({ message: 'Invalid credentials.' });
+        }
+
+        // Generate JWT token
+        const token = jwt.sign(
+            { userId: user._id, username: user.username, role: user.role },
+            JWT_SECRET,
+            { expiresIn: '1h' } // Token expires in 1 hour
+        );
+
+        res.status(200).json({ message: 'Login successful!', token: token, role: user.role });
+    } catch (err) {
+        console.error('Error during login:', err);
+        res.status(500).json({ message: 'Server error during login.' });
+    }
+});
+
+
+
 
 
 // --- Start the Server ---

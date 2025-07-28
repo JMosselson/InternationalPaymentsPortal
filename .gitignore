@@ -17,6 +17,8 @@ InternationalPaymentApp/build/
 InternationalPaymentApp/node_modules/
 InternationalPaymentApp/.eslintcache
 InternationalPaymentApp/.vscode/
+InternationalPaymentBackend/key.pem
+InternationalPaymentBackend/cert.pem
 
 # Node.js backend specific ignores (inside InternationalPaymentBackend)
 InternationalPaymentBackend/node_modules/

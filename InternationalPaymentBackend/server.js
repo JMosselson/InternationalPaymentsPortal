@@ -202,8 +202,40 @@ app.post('/api/login', loginLimiter, async (req, res) => {
     }
 });
 
+// 3. Make International Payment (Customer Portal)
+app.post('/api/payments', authenticateToken, async (req, res) => {
+    // Ensure only customers can make payments
+    if (req.user.role !== 'customer') {
+        return res.status(403).json({ message: 'Access denied. Only customers can make payments.' });
+    }
 
+    const { amount, currency, provider, payeeAccount, swiftCode } = req.body;
+    const customerId = req.user.userId; // Get customer ID from authenticated token
 
+    // Server-side input validation
+    if (!isValidAmount(amount) || !currency || !provider || !isValidAccountNumber(payeeAccount) || !isValidSwiftCode(swiftCode)) {
+        return res.status(400).json({ message: 'Invalid payment data. Please check all fields.' });
+    }
+
+    try {
+        const newTransaction = new Transaction({
+            customerId: customerId,
+            amount: parseFloat(amount), // Ensure amount is a number for API
+            currency,
+            provider,
+            payeeAccount,
+            swiftCode,
+            status: 'Pending' // Initial status
+        });
+
+        await newTransaction.save(); // Save new transaction to MongoDB
+
+        res.status(201).json({ message: 'Payment submitted successfully for processing!' });
+    } catch (err) {
+        console.error('Error submitting payment:', err);
+        res.status(500).json({ message: 'Server error during payment submission.' });
+    }
+});
 
 
 // --- Start the Server ---

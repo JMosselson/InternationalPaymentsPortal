@@ -237,6 +237,40 @@ app.post('/api/payments', authenticateToken, async (req, res) => {
     }
 });
 
+// 4. Fetch Transactions (Employee Portal)
+app.get('/api/transactions', authenticateToken, async (req, res) => {
+    // Ensure only employees can view transactions
+    if (req.user.role !== 'employee') {
+        return res.status(403).json({ message: 'Access denied. Only employees can view transactions.' });
+    }
+
+    try {
+        // Populate customer details from the User collection
+        const transactions = await Transaction.find()
+            .populate('customerId', 'fullName') // Only fetch fullName from the User model
+            .sort({ createdAt: -1 }); // Sort by creation date, newest first
+
+        // Map to a cleaner format for the frontend
+        const formattedTransactions = transactions.map(t => ({
+            id: t._id, // MongoDB uses _id
+            customerName: t.customerId ? t.customerId.fullName : 'N/A', // Handle case where customer might be missing
+            amount: t.amount.toFixed(2), // Format amount to 2 decimal places
+            currency: t.currency,
+            provider: t.provider,
+            payeeAccount: t.payeeAccount,
+            swiftCode: t.swiftCode,
+            status: t.status,
+            createdAt: t.createdAt
+        }));
+
+        res.status(200).json({ transactions: formattedTransactions });
+    } catch (err) {
+        console.error('Error fetching transactions:', err);
+        res.status(500).json({ message: 'Server error fetching transactions.' });
+    }
+});
+
+
 
 // --- Start the Server ---
 // Only start the HTTPS server if certificates are successfully loaded

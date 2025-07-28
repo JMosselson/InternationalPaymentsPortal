@@ -1,0 +1,29 @@
+# Node.js common ignores
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+.pnp/
+.pnp.js
+
+# Environment variables
+# This ignores all .env files at any level within the repo
+.env
+.env.*.local
+.env.local
+
+# React frontend specific ignores (inside InternationalPaymentApp)
+InternationalPaymentApp/build/
+InternationalPaymentApp/node_modules/
+InternationalPaymentApp/.eslintcache
+InternationalPaymentApp/.vscode/
+
+# Node.js backend specific ignores (inside InternationalPaymentBackend)
+InternationalPaymentBackend/node_modules/
+InternationalPaymentBackend/key.pem        # SSL Private Key - CRITICAL to ignore
+InternationalPaymentBackend/cert.pem       # SSL Certificate - CRITICAL to ignore
+InternationalPaymentBackend/hash_password.js # Temporary utility script
+
+# OS specific files
+.DS_Store
+Thumbs.db

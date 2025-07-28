@@ -270,7 +270,81 @@ app.get('/api/transactions', authenticateToken, async (req, res) => {
     }
 });
 
+// 5. Update Transaction Status (Employee Portal - Verify)
+app.put('/api/transactions/:id/status', authenticateToken, async (req, res) => {
+    // Ensure only employees can update transaction status
+    if (req.user.role !== 'employee') {
+        return res.status(403).json({ message: 'Access denied. Only employees can update transaction status.' });
+    }
 
+    const transactionId = req.params.id;
+    const { status } = req.body; // Expected status: 'Verified' or 'Completed'
+    const employeeId = req.user.userId; // Get employee ID from authenticated token
+
+    if (!['Verified', 'Completed'].includes(status)) {
+        return res.status(400).json({ message: 'Invalid status provided.' });
+    }
+
+    try {
+        const updatedTransaction = await Transaction.findByIdAndUpdate(
+            transactionId,
+            { status: status, processedByEmployeeId: employeeId },
+            { new: true } // Return the updated document
+        );
+
+        if (updatedTransaction) {
+            res.status(200).json({ message: `Transaction ${transactionId} status updated to ${status}.` });
+        } else {
+            res.status(404).json({ message: 'Transaction not found or no changes made.' });
+        }
+    } catch (err) {
+        console.error('Error updating transaction status:', err);
+        res.status(500).json({ message: 'Server error updating transaction status.' });
+    }
+});
+
+// 6. Submit to SWIFT (Employee Portal)
+app.post('/api/swift-submit', authenticateToken, async (req, res) => {
+    // Ensure only employees can submit to SWIFT
+    if (req.user.role !== 'employee') {
+        return res.status(403).json({ message: 'Access denied. Only employees can submit to SWIFT.' });
+    }
+
+    const { transactionIds } = req.body; // Array of transaction IDs
+    const employeeId = req.user.userId;
+
+    if (!Array.isArray(transactionIds) || transactionIds.length === 0) {
+        return res.status(400).json({ message: 'No transactions selected for SWIFT submission.' });
+    }
+
+    try {
+        // Find transactions and check if they are 'Verified'
+        const transactionsToUpdate = await Transaction.find({
+            _id: { $in: transactionIds },
+            status: 'Verified'
+        });
+
+        if (transactionsToUpdate.length !== transactionIds.length) {
+            const unverifiedCount = transactionIds.length - transactionsToUpdate.length;
+            return res.status(400).json({
+                message: `${unverifiedCount} selected transaction(s) are not yet verified and cannot be submitted to SWIFT.`,
+                unverified: transactionIds.filter(id => !transactionsToUpdate.some(t => t._id.toString() === id))
+            });
+        }
+
+        // Update status of selected transactions to 'Completed'
+        const updateResult = await Transaction.updateMany(
+            { _id: { $in: transactionIds } },
+            { status: 'Completed', processedByEmployeeId: employeeId }
+        );
+
+        res.status(200).json({ message: `Successfully submitted ${updateResult.modifiedCount} transactions to SWIFT.` });
+
+    } catch (err) {
+        console.error('Error submitting to SWIFT:', err);
+        res.status(500).json({ message: 'Server error during SWIFT submission.' });
+    }
+});
 
 // --- Start the Server ---
 // Only start the HTTPS server if certificates are successfully loaded

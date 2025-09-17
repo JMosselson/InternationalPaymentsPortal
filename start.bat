@@ -131,14 +131,17 @@ if not exist "key.pem" (
     echo SSL certificates exist ✓
 )
 
-REM Initialize database if needed
+REM Initialize database if needed - RUN FROM BACKEND DIRECTORY
 echo Checking database initialization...
-cd /d "%~dp0"
-if exist "scripts\init-db.js" (
+if exist "..\scripts\init-db.js" (
     echo Initializing database with default data...
-    cd /d "%~dp0InternationalPaymentBackend"
+    REM Run the script from the backend directory where node_modules exist
     node ..\scripts\init-db.js
-    echo Database initialization completed ✓
+    if %errorlevel% equ 0 (
+        echo Database initialization completed ✓
+    ) else (
+        echo Database initialization had errors, but continuing...
+    )
 ) else (
     echo Database initialization script not found. Database will be initialized on first use.
 )
@@ -156,7 +159,6 @@ echo.
 
 REM Start backend server
 echo Starting backend server...
-cd /d "%~dp0InternationalPaymentBackend"
 start /min "International Payments API" cmd /c "node server.js"
 
 REM Wait a moment for backend to start

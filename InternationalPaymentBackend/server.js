@@ -388,3 +388,18 @@ process.on('SIGINT', async () => {
         process.exit(0); // Ensure process exits
     }
 });
+
+// --- Self-Signed Certificate Generation (Development Only) ---
+// Uncomment the following lines to generate self-signed certificates for development
+// Make sure to run this in the project directory where server.js is located
+/*
+const { exec } = require('child_process');
+exec('openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes', (err, stdout, stderr) => {
+    if (err) {
+        console.error('Error generating self-signed certificate:', err);
+        return;
+    }
+    console.log('Self-signed certificate generated successfully.');
+});
+*/
+
